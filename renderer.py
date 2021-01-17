@@ -24,6 +24,9 @@ sparks = []
 global LIGHT_OFF_SOUND
 LIGHT_OFF_SOUND = None
 
+global WARNING_SOUND
+WARNING_SOUND = None
+
 global BUZZ_SOUND
 BUZZ_SOUND = None
 
@@ -73,7 +76,7 @@ class Renderer:
         pg.mixer.set_num_channels(32)
 
         global LIGHT_OFF_SOUND
-        LIGHT_OFF_SOUND = pg.mixer.Sound('resources/light_off2.wav')
+        LIGHT_OFF_SOUND = pg.mixer.Sound('resources/light_off3.wav')
 
         global BUZZ_SOUND
         BUZZ_SOUND = pg.mixer.Sound('resources/buzzz.mp3')
@@ -82,6 +85,13 @@ class Renderer:
         pg.mixer.music.load('resources/buzzz.mp3')
         pg.mixer.music.set_volume(0.015)
         pg.mixer.music.play(-1, 0.0)
+
+        global WARNING_SOUND
+        WARNING_SOUND = pg.mixer.Sound('resources/warning.wav')
+        self.can_warn_sound = True
+
+        self.zap = pg.mixer.Sound('resources/zap.wav')
+        self.zap.set_volume(0.15)
 
     def add(self, obj):
         self.all.add(obj)
@@ -95,7 +105,7 @@ class Renderer:
     def render_flicker(self):
         # print('sdjlfhs')
         black_surf = pg.Surface(self.window.get_size())
-        black_surf.fill((255, 0, 0))
+        black_surf.fill((0, 0, 0))
         self.window.blit(black_surf, (0, 0))
 
     def render_border(self):
@@ -119,11 +129,21 @@ class Renderer:
             sparks.append([[0, GAME_RESOLUTION[1] - self.bbl], random.randint(
                 0, 90), random.randint(7, 10) / 15, 4 * random.randint(5, 10) / 10, (241, 242, 218)])
 
-        if self.bbl >= GAME_RESOLUTION[1] and not self.is_flickering:
-            # self.flicker_cooldown = 3
-            # self.is_flickering = True
-            # self.render_flicker()
+        if self.bbl >= GAME_RESOLUTION[1]:
             self.night = True
+            self.is_flickering = False
+            self.bbu = 0
+            self.bbr = 0
+            self.bbd = 0
+            self.bbl = 0
+            self.can_light_off_sound = True
+            self.can_warn_sound = True
+
+        if self.bbl >= 390:
+            if self.can_warn_sound:
+                channel = pg.mixer.find_channel()
+                channel.play(WARNING_SOUND)
+                self.can_warn_sound = False
 
         if self.bbl >= 550:
             if self.can_light_off_sound:
@@ -131,6 +151,11 @@ class Renderer:
                 channel.play(LIGHT_OFF_SOUND)
                 self.can_light_off_sound = False
 
+            if not self.is_flickering:
+                self.flicker_cooldown = 3
+                self.is_flickering = True
+                self.render_flicker()
+                self.screen_shake = 24
                 # chan1 = pg.mixer.find_channel()
         # if chan1:
         # chan1.set_volume(1.0, 0.0)
@@ -201,7 +226,7 @@ class Renderer:
 
         else:
             self.all.update()
-            # self.render_border()
+            self.render_border()
             # channel = pg.mixer.find_channel()
             # channel.play(BUZZ_SOUND)
             pg.mixer.music.set_volume(0.015)
