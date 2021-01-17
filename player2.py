@@ -27,11 +27,14 @@ global LIGHT_IMAGE
 LIGHT_IMAGE = pg.transform.scale(
     pg.image.load('resources/light.png'), (80, 80))
 
+global game_end_timer
+game_end_timer = -1
 
 class Bullet(pg.sprite.Sprite):
-    """ This class represents the bullet . """
     sound_pew = None
     sound_hit = None
+    sound_wall_hit = None
+    sound_portal_hit = None
     chan1 = None
     chan2 = None
 
@@ -52,7 +55,7 @@ class Bullet(pg.sprite.Sprite):
         self.original_x = x
         self.original_y = y
 
-        # self.bullet_shoot_sound()
+        self.bullet_shoot_sound()
         self.player = player
         self.block_list = block_list
 
@@ -60,6 +63,10 @@ class Bullet(pg.sprite.Sprite):
             3 * 3
         self.vy = math.sin(math.radians(self.angle)) * \
             3 * 3
+
+        self.bounce = 0
+        self.tp_cooldown = 0
+        self.tp_count = 0
 
     def bullet_shoot_sound(self):
         # chan1 = pg.mixer.find_channel()
@@ -77,10 +84,17 @@ class Bullet(pg.sprite.Sprite):
     def bullet_hit_sound(self):
         Bullet.sound_hit.play()
 
+    def bullet_bounce_wall(self):
+        Bullet.sound_wall_hit.play()
+
     def update(self):
         """ Move the bullet. """
+        # if self.tp_cooldown == 0:
         self.rect.x += self.vx
         self.rect.y -= self.vy
+
+        if self.tp_cooldown > 0:
+            self.tp_cooldown -= 1
 
         w, h = self.original_image.get_size()
 
@@ -114,32 +128,116 @@ class Bullet(pg.sprite.Sprite):
                 sparks.append([[bullet.rect.x + sign_x*15, bullet.rect.y + sign_y*15], random.randint(
                     0, 359), random.randint(7, 10) / 10, 5 * random.randint(5, 10) / 10, (241, 242, 218)])
                 self.renderer.screen_shake = 4
-                # self.bullet_hit_sound()
+                self.bullet_bounce_wall()
+
+        if self.bounce > 3 or self.tp_count > 5:
+            self.player.bullet_list.remove(bullet)
+            self.renderer.all.remove(bullet)
+            sparks.append([[bullet.rect.x, bullet.rect.y], random.randint(
+                    0, 359), random.randint(4, 8) / 10, 5 * random.randint(5, 10) / 10, (241, 242, 218)])
+
         for block in self.block_list:
             if self.rect.colliderect(block.rect):
-                # self.vx *= -1
-                # self.vy *= -1
-                # sound
-                # if self.rect.y + 3 >= block.rect.y or self.rect.y - 3 <= block.rect.y + block.h:
-                # self.vy *= -1
-                # if self.rect.x + 3 >= block.rect.x or self.rect.x - 3 <= block.rect.x + block.w:
-                # self.vx *= -1
+                if block.block_type == 'portal' and self.tp_cooldown == 0:
+                    candidate_block = random.choice(self.block_list)
+                    while candidate_block.block_type != 'portal' or candidate_block == block:
+                        candidate_block = random.choice(self.block_list)
 
-                # if block.rect.+y < self.rect.y or block.
-                xd = (block.rect.x + block.w / 2) - \
-                    (self.rect.x)  # this needs work
-                yd = (block.rect.y + block.h / 2) - \
-                    (self.rect.y)
+                    angle = self.angle % 360
+                    # faci+-+-ng_up =
+                    facing_right = angle > 315 or angle <= 45
+                    facing_down = angle <= 315 and angle > 225
+                    facing_left = angle <= 225 and angle > 135
+                    facing_up = False
+                    # print(facing_right, facing_down, facing_left)
+                    # print(angle)
+                    mx = 0
+                    my = 0
 
-                if xd < 0:
-                    xd *= -1
-                if yd < 0:
-                    yd *= -1
+                    if facing_right:
+                        mx = candidate_block.rect.x + candidate_block.w
+                        my = self.rect.y - block.rect.y + candidate_block.rect.y
+                    elif facing_left:
+                        mx = candidate_block.rect.x
+                        my = self.rect.y - block.rect.y + candidate_block.rect.y
+                    elif facing_down:
+                        mx = self.rect.x - block.rect.x + candidate_block.rect.x
+                        my = candidate_block.rect.y + candidate_block.h
+                    else:
+                        mx = self.rect.x - block.rect.x + candidate_block.rect.x
+                        my = candidate_block.rect.y
+                        facing_up = True
 
-                if xd > yd:
-                    self.vx *= -1
-                else:
-                    self.vy *= -1
+                    # print(candidate_block.rect)
+                    self.rect.x = mx
+                    self.rect.y = my
+                    # self.vx *= 2
+                    # self.vy *= 2
+                    self.tp_cooldown = 10
+                    # SPARKS THE COLOR OF THE STICKY NOTE
+                    # angle -= 90
+                    for _ in range(15):
+                        sparks.append([[self.rect.x, self.rect.y], random.randint(0, 359), random.randint(
+                                3, 7) / 10 * 1, 9 * random.randint(5, 10) / 10 * 1 * (-1 if facing_up or facing_down else 1), candidate_block.color])
+                    self.tp_count += 1
+                    Bullet.sound_portal_hit.play()
+                elif block.block_type == 'wall':
+                    # self.vx *= -1
+                    # self.vy *= -1
+                    # sound
+                    # if self.rect.y + 3 >= block.rect.y or self.rect.y - 3 <= block.rect.y + block.h:
+                    # self.vy *= -1
+                    # if self.rect.x + 3 >= block.rect.x or self.rect.x - 3 <= block.rect.x + block.w:
+                    # self.vx *= -1
+
+                    # down = self.rect.y <= block.rect.y + block.h / 2
+                    # up = self.rect.y >= block.rect.y
+                    # left = self.rect.x >= block.rect.x
+                    # right = self.rect.x <= block.rect.x + block.w / 2
+
+                    # down = self.rect.top > block.rect.bottom
+                    # top = self.rect.bottom > block.rect.top
+                    # left = self.rect.right > block.rect.left
+                    # right = self.rect.left < block.rect.right
+
+                    # print(top, down, left, right)
+                    # sign_x = 1 if left else -1 if right else 0
+                    # sign_y = 1 if top else -1 if down else 0
+
+                    # if block.rect.+y < self.rect.y or block.
+                    xd = (block.rect.x + block.w / 2) - \
+                        (self.rect.x)  # this needs work
+                    yd = (block.rect.y + block.h / 2) - \
+                        (self.rect.y)
+
+                    if xd < 0:
+                        xd *= -1
+                    if yd < 0:
+                        yd *= -1
+
+                    if xd > yd:
+                        self.vx *= -1
+                    else:
+                        self.vy *= -1
+                    self.bullet_hit_sound()
+                    self.bounce += 1
+                    self.angle += 90
+                # if self.rect.x + 4 > block.rect.x and \
+                        # self.rect.x + self.image.get_width() - 4 < block.rect.x + block.w and \
+                            # self.rect.y + 4 > block.rect.y and \
+                                # self.rect.y + self.rect.w - 4 < block.rect.y + block.h:
+                        # print('sdf')
+
+                # bx = block.rect.x - block.w / 2
+                # by = block.rect.y - block.h / 2
+
+                # ix = self.rect.x
+                # iy = self.rect.y
+
+                # if bx < ix and by < iy:
+                    # if ix + self.image.get_width() < bx + block.w \
+                            # and iy + self.image.get_height() < by + block.h:
+                        # print('inside')
 
 # this code is bad... don't look
 
@@ -154,7 +252,7 @@ class PlayerTwo(pg.sprite.Sprite):
     image_orig2.fill((163, 206, 250))
 
     box_rand = [image_orig, image_orig2]
-
+    font =None
     def __init__(self, renderer, x, y, block_list, enemy=None):
         super(PlayerTwo, self).__init__()
 
@@ -183,16 +281,28 @@ class PlayerTwo(pg.sprite.Sprite):
         pg.mixer.pre_init(44100, -16, 2, 512)
         pg.mixer.set_num_channels(32)
 
-        Bullet.sound_pew = pg.mixer.Sound('resources/woosh3.wav')
-        # Bullet.sound_hit = pg.mixer.Sound('resources/hit.wav')
+        Bullet.sound_pew = pg.mixer.Sound('resources/shoot_bloop.wav')
+        Bullet.sound_pew.set_volume(0.035)
+        Bullet.sound_hit = pg.mixer.Sound('resources/bounce6.wav')
+        Bullet.sound_hit.set_volume(0.02)
+        Bullet.sound_wall_hit = pg.mixer.Sound('resources/hit_projectile.wav')
+        Bullet.sound_wall_hit.set_volume(0.02)
+        Bullet.sound_portal_hit = pg.mixer.Sound('resources/place.wav')
+        Bullet.sound_portal_hit.set_volume(0.02)
+        self.hit_sound = pg.mixer.Sound('resources/hit.wav')
+        self.hit_sound.set_volume(0.04)
 
+        self.portal_sound = pg.mixer.Sound('resources/portal_sound.wav')
+        self.portal_sound.set_volume(0.04)
         self.bullet_list = pg.sprite.Group()
         self.enemy = enemy
 
         self.health = 100
         self.block_list = block_list
         self.stun = 0
-
+        self.tp_cooldown = 0
+        self.dead = False
+        PlayerTwo.font = pg.font.SysFont("freesansbold", 100)
     def update(self):
         w, h = self.original_image.get_size()
         key_pressed = pg.key.get_pressed()
@@ -200,11 +310,18 @@ class PlayerTwo(pg.sprite.Sprite):
         global cooldown
         cooldown += self.renderer.clock.get_time()
 
-        if cooldown > 115:
+        if cooldown > 165:
             cooldown = 0
-
+        if self.tp_cooldown > 0:
+            self.tp_cooldown -= 1
         if self.stun > 0:
             self.stun -= 1
+
+        global game_end_timer
+        if game_end_timer > 0:
+            game_end_timer -=1
+        if game_end_timer <= 0 and self.dead:
+            sys.exit()
 
         if key_pressed[pg.K_a]:
             self.rot_accel = 1.5
@@ -221,10 +338,20 @@ class PlayerTwo(pg.sprite.Sprite):
 
         rotated_image, origin = self.renderer.rotate(player_img,
                                                      self.position, (w/2, h/2), self.angle)
-
+        # print(game_end_timer)
         if (self.health < 20):
-            print('dead')
-            sys.exit()
+            text = PlayerTwo.font.render('Player Blue Wins', 1, pg.Color((255, 255, 255)))
+            text_rect = text.get_rect(center=(GAME_RESOLUTION[0]//2, GAME_RESOLUTION[1] // 2))
+            # return text, text_rect
+
+            black_surf = pg.Surface((1600, 900))
+            black_surf.fill((0,0,0))
+            self.renderer.window.blit(black_surf, (0,0))
+            self.renderer.window.blit(text, text_rect)
+            if not self.dead:
+                game_end_timer = 70
+            rotated_image.fill((255, 255, 255, 0), None, pg.BLEND_RGBA_MULT)
+            self.dead = True
         else:
             rotated_image.fill((255, 255, 255, 2.55 * self.health),
                                None, pg.BLEND_RGBA_MULT)
@@ -243,6 +370,7 @@ class PlayerTwo(pg.sprite.Sprite):
                     0, 359), random.randint(13, 18) / 10 * 1.5, 5 * random.randint(5, 10) / 10, (241, 242, 218)])
                 self.renderer.screen_shake = 6
                 self.health -= 5
+                self.hit_sound.play()
         # Circle Effects ----------------------------------------- #
         # loc, radius, border_stats, speed_stats, color
         for i, circle in sorted(enumerate(circle_effects), reverse=True):
@@ -255,7 +383,7 @@ class PlayerTwo(pg.sprite.Sprite):
                 pg.draw.circle(self.renderer.base_surface, circle[4], [int(circle[0][0]), int(
                     circle[0][1])], int(circle[1]), int(circle[2][0]))
 
-        if key_pressed[pg.K_LSHIFT] and cooldown == 0:
+        if key_pressed[pg.K_LSHIFT] and cooldown == 0 and self.stun == 0:
             self.state, self.frame = self.renderer.change_state(
                 self.state, self.frame, 'p2_shoot')
 
@@ -298,9 +426,18 @@ class PlayerTwo(pg.sprite.Sprite):
             pg.draw.polygon(self.renderer.base_surface, color, points)
 
             spark[0] = utils.advance(spark[0], spark[1], speed)
-            spark[3] -= 0.5
-            if spark[3] <= 0:
+            # spark[3] -= 0.5+-
+            if spark[3] < 0.5:
+                spark[3] += 0.5
+            elif spark[3] > 0.5:
+                spark[3] -= 0.5
+
+            if abs(spark[3]) <= 0.5:
                 sparks.pop(i)
+            if self.renderer.night:
+                self.renderer.filter.blit(
+                    LIGHT_IMAGE, (spark[0][0] - LIGHT_IMAGE.get_width() / 2, spark[0][1] - LIGHT_IMAGE.get_height() / 2))
+
 
         # Handle acceleration
         if key_pressed[pg.K_w] and not self.stun:
@@ -310,7 +447,7 @@ class PlayerTwo(pg.sprite.Sprite):
             self.accel_x = 0
 
         for block in self.block_list:
-            if self.rect.colliderect(block.rect):
+            if self.rect.colliderect(block.rect) and block.block_type == 'wall':
                 self.accel_x = -0.7
                 self.stun = 45
                 self.renderer.screen_shake = 2
@@ -341,3 +478,65 @@ class PlayerTwo(pg.sprite.Sprite):
             self.angle_speed *= 0.92
 
         self.angle += self.angle_speed
+
+
+        # print(self.angle % 360)
+        for block in self.block_list:
+            if self.rect.colliderect(block.rect) and block.block_type == 'portal' and self.tp_cooldown == 0:
+                candidate_block = random.choice(self.block_list)
+                while candidate_block.block_type != 'portal' or candidate_block == block:
+                    candidate_block = random.choice(self.block_list)
+
+                angle = self.angle % 360
+                # faci+-+-ng_up =
+                facing_right = angle > 315 or angle <= 45
+                facing_down = angle <= 315 and angle > 225
+                facing_left = angle <= 225 and angle > 135
+                facing_up = False
+                # print(facing_right, facing_down, facing_left)
+
+                mx = 0
+                my = 0
+
+
+                if facing_right:
+                    mx = candidate_block.rect.x + candidate_block.w
+                    my = self.rect.y - block.rect.y + candidate_block.rect.y
+                elif facing_left:
+                    mx = candidate_block.rect.x
+                    my = self.rect.y - block.rect.y + candidate_block.rect.y
+                elif facing_down:
+                    mx = self.rect.x - block.rect.x + candidate_block.rect.x
+                    my = candidate_block.rect.y + candidate_block.h
+                else:
+                    mx = self.rect.x - block.rect.x + candidate_block.rect.x
+                    my = candidate_block.rect.y
+                    facing_up = True
+
+
+                # if facing_right:
+                    # mx = candidate_block.rect.x + candidate_block.w
+                    # my = candidate_block.rect.y + candidate_block.h / 2
+                # elif facing_left:
+                    # mx = candidate_block.rect.x
+                    # my = candidate_block.rect.y + candidate_block.h / 2
+                # elif facing_down:
+                    # mx = candidate_block.rect.x + candidate_block.w / 2
+                    # my = candidate_block.rect.y + candidate_block.h
+                # else:
+                    # mx = candidate_block.rect.x + candidate_block.w / 2
+                    # my = candidate_block.rect.y
+                    # facing_up = True
+                self.position[0] = mx
+                self.position[1] = my
+                self.accel_x = 2
+                self.tp_cooldown = 120
+                # SPARKS THE COLOR OF THE STICKY NOTE
+                for _ in range(30):
+                    sparks.append([[self.position[0], self.position[1]], random.randint(0, 359), random.randint(
+                            7, 10) / 10 * 3, 9 * random.randint(5, 10) / 10 * 1 * (-1 if facing_up or facing_down else 1), candidate_block.color])
+                self.portal_sound.play()
+                # if self.renderer.night:
+                    # self.renderer.filter.blit(
+                        # LIGHT_IMAGE, (self.position[0] - LIGHT_IMAGE.get_width() / 2, self.position[1] - LIGHT_IMAGE.get_height() / 2))
+

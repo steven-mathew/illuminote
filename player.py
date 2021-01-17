@@ -27,9 +27,10 @@ global LIGHT_IMAGE
 LIGHT_IMAGE = pg.transform.scale(
     pg.image.load('resources/light.png'), (80, 80))
 
+global game_end_timer
+game_end_timer = -1
 
 class Bullet(pg.sprite.Sprite):
-    """ This class represents the bullet . """
     sound_pew = None
     sound_hit = None
     sound_wall_hit = None
@@ -251,7 +252,7 @@ class Player(pg.sprite.Sprite):
     image_orig2.fill((163, 206, 250))
 
     box_rand = [image_orig, image_orig2]
-
+    font =None
     def __init__(self, renderer, x, y, block_list, enemy=None):
         super(Player, self).__init__()
 
@@ -300,7 +301,8 @@ class Player(pg.sprite.Sprite):
         self.block_list = block_list
         self.stun = 0
         self.tp_cooldown = 0
-
+        self.dead = False
+        Player.font = pg.font.SysFont("freesansbold", 100)
     def update(self):
         w, h = self.original_image.get_size()
         key_pressed = pg.key.get_pressed()
@@ -314,6 +316,12 @@ class Player(pg.sprite.Sprite):
             self.tp_cooldown -= 1
         if self.stun > 0:
             self.stun -= 1
+
+        global game_end_timer
+        if game_end_timer > 0:
+            game_end_timer -=1
+        if game_end_timer <= 0 and self.dead:
+            sys.exit()
 
         if key_pressed[pg.K_LEFT]:
             self.rot_accel = 1.5
@@ -330,10 +338,20 @@ class Player(pg.sprite.Sprite):
 
         rotated_image, origin = self.renderer.rotate(player_img,
                                                      self.position, (w/2, h/2), self.angle)
-
+        # print(game_end_timer)
         if (self.health < 20):
-            print('dead')
-            sys.exit()
+            text = Player.font.render('Player Red Wins', 1, pg.Color((255, 255, 255)))
+            text_rect = text.get_rect(center=(GAME_RESOLUTION[0]//2, GAME_RESOLUTION[1] // 2))
+            # return text, text_rect
+
+            black_surf = pg.Surface((1600, 900))
+            black_surf.fill((0,0,0))
+            self.renderer.window.blit(black_surf, (0,0))
+            self.renderer.window.blit(text, text_rect)
+            if not self.dead:
+                game_end_timer = 70
+            rotated_image.fill((255, 255, 255, 0), None, pg.BLEND_RGBA_MULT)
+            self.dead = True
         else:
             rotated_image.fill((255, 255, 255, 2.55 * self.health),
                                None, pg.BLEND_RGBA_MULT)

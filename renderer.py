@@ -41,7 +41,7 @@ class Renderer:
 
         pg.init()
 
-        self.window = pg.display.set_mode(WINDOW_RESOLUTION, 0, 32)
+        self.window = pg.display.set_mode(WINDOW_RESOLUTION, pg.FULLSCREEN, 32)
         self.clock = pg.time.Clock()
 
         self.base_surface = pg.Surface(GAME_RESOLUTION)
@@ -110,22 +110,22 @@ class Renderer:
 
     def render_border(self):
         if self.bbu < GAME_RESOLUTION[0]:
-            self.bbu += 3
+            self.bbu += 2
             sparks.append([[self.bbu, 0], random.randint(
                 90, 180), random.randint(7, 10) / 15, 4 * random.randint(5, 10) / 10, (241, 242, 218)])
 
         if self.bbu >= GAME_RESOLUTION[0] and self.bbr < GAME_RESOLUTION[1]:
-            self.bbr += 3
+            self.bbr += 2
             sparks.append([[GAME_RESOLUTION[0], self.bbr], random.randint(
                 180, 270), random.randint(7, 10) / 15, 4 * random.randint(5, 10) / 10, (241, 242, 218)])
 
         if self.bbr >= GAME_RESOLUTION[1] and self.bbd < GAME_RESOLUTION[0]:
-            self.bbd += 3
+            self.bbd += 2
             sparks.append([[GAME_RESOLUTION[0] - self.bbd, GAME_RESOLUTION[1]], random.randint(
                 270, 359), random.randint(7, 10) / 15, 4 * random.randint(5, 10) / 10, (241, 242, 218)])
 
         if self.bbd >= GAME_RESOLUTION[0] and self.bbl < GAME_RESOLUTION[1]:
-            self.bbl += 3
+            self.bbl += 2
             sparks.append([[0, GAME_RESOLUTION[1] - self.bbl], random.randint(
                 0, 90), random.randint(7, 10) / 15, 4 * random.randint(5, 10) / 10, (241, 242, 218)])
 
@@ -139,13 +139,13 @@ class Renderer:
             self.can_light_off_sound = True
             self.can_warn_sound = True
 
-        if self.bbl >= 390:
+        if self.bbl >= 450:
             if self.can_warn_sound:
                 channel = pg.mixer.find_channel()
                 channel.play(WARNING_SOUND)
                 self.can_warn_sound = False
 
-        if self.bbl >= 550:
+        if self.bbl >= 650:
             if self.can_light_off_sound:
                 channel = pg.mixer.find_channel()
                 channel.play(LIGHT_OFF_SOUND)
