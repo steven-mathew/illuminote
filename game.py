@@ -6,6 +6,7 @@ from player import Player
 from renderer import WINDOW_RESOLUTION
 from block import Block
 import random
+import pygame_menu
 
 
 class Game:
@@ -17,6 +18,12 @@ class Game:
         """
         self.renderer = Renderer()
         self.renderer.draw()
+
+    def set_up_blocks(self):
+        """
+        Set up the the map for the game
+        """
+        pass
 
     def run_game(self):
         """Run the game.
@@ -77,4 +84,22 @@ class Game:
 
 if __name__ == '__main__':
     game = Game()
-    game.run_game()
+    # game.run_game()
+
+    mytheme = pygame_menu.themes.THEME_DARK.copy()
+    mytheme.widget_font = pygame_menu.font.FONT_OPEN_SANS_BOLD
+    mytheme.title_font = pygame_menu.font.FONT_OPEN_SANS_BOLD
+    mytheme.title_bar_style = pygame_menu.widgets.MENUBAR_STYLE_SIMPLE
+    # Theme(widget_font=pygame_menu.font.FONT_NEVIS,
+                              # title_bar_style=pygame_menu.widgets.MENUBAR_STYLE_SIMPLE)
+    mytheme.title_offset = (100, 0)
+    menu = pygame_menu.Menu(300, 400, 'illuminote',
+                            theme=mytheme)
+
+    # menu.add_text_input('Name :', default='John Doe')
+    # menu.add_selector(
+    # 'Difficulty :', [('Hard', 1), ('Easy', 2)], onchange=set_difficulty)
+    menu.add_button('Play', game.run_game)
+    menu.add_button('Change map', game.set_up_blocks)
+    menu.add_button('Quit', pygame_menu.events.EXIT)
+    menu.mainloop(game.renderer.window)
