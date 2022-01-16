@@ -1,6 +1,6 @@
 # Illuminote
 
-A mixed-reality multiplayer game with a spark.
+A mixed-reality multiplayer game with a spark. Check out the [devpost](https://devpost.com/software/illuminote).
 
 ## What is Illuminote?
 
